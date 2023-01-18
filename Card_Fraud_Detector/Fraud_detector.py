@@ -208,7 +208,7 @@ labels = ['No Fraud', 'Fraud']
 a = plt.figure(figsize=(8,8))
 
 a.add_subplot(221)
-plot_confusion_matrix(oversample_smote, labels, title='OverSample (SMOTE) Neural Model \n Confusion Matrix',
+plot_confusion_matrix(oversample_cm, labels, title='OverSample (SMOTE) Neural Model \n Confusion Matrix',
                       cmap=plt.cm.Oranges)
 
 a.add_subplot(222)
