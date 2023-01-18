@@ -7,7 +7,6 @@ from imblearn.pipeline import make_pipeline as imbalanced_make_pipeline
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix
-import itertools
 import matplotlib.pyplot as plt
 import seaborn as sns
 from keras.models import Sequential
@@ -33,7 +32,7 @@ print('Frauds', round(df_train_full['TX_FRAUD'].value_counts()[1]/len(df_train_f
 print('Numbers of Frauds:', df_train_full['TX_FRAUD'].value_counts()[1])
 print('Dataframe shape:', df_train_full.shape)
 
-# Creating a list with columns to work with
+# Create a list with the columns that will be used
 input_features = ['TX_AMOUNT','TX_DURING_WEEKEND', 'TX_DURING_NIGHT', 'CUSTOMER_ID_NB_TX_1DAY_WINDOW',
        'CUSTOMER_ID_AVG_AMOUNT_1DAY_WINDOW', 'CUSTOMER_ID_NB_TX_7DAY_WINDOW',
        'CUSTOMER_ID_AVG_AMOUNT_7DAY_WINDOW', 'CUSTOMER_ID_NB_TX_30DAY_WINDOW',
@@ -55,7 +54,10 @@ df_fraud = df_new.loc[df_new['TX_FRAUD'] == 1]
 df_nonfraud = df_new.loc[df_new['TX_FRAUD'] == 0][:(df_new['TX_FRAUD'].value_counts()[1])]
 equal_amount_of_frauds_df = pd.concat([df_fraud, df_nonfraud])
 
+# Shuffling the dataset subsampled
 df_new = equal_amount_of_frauds_df.sample(frac=1, random_state=42)
+
+# Separate target and feature of the subsampled data
 X_sub = df_new.drop('TX_FRAUD', axis=1)
 y_sub = df_new['TX_FRAUD']
 
@@ -66,7 +68,7 @@ X_test = X_test.values
 y_train = y_train.values
 y_test = y_test.values
 
-# Making correlations
+# Checking correlations in the full dataset and the subsampled
 sub_df_corr = df_new.corr()
 df_corr = df.corr()
 
@@ -86,11 +88,12 @@ plt.show()
 
 # Looking through the matrix we see that TX_DURING_WEEK has a negative correlation with TX_FRAUD and
 # AMOUNT SCALED has a slightly positive correlation with TX_FRAUD
-# Lets split into feature and target
+
+# Now split into feature and target the full dataset
 X = df.drop('TX_FRAUD', axis=1)
 y = df['TX_FRAUD']
 
-# Train Test Split before oversampling with SMOTE
+# Train Test Split of the full dataset
 sss = StratifiedKFold(n_splits=5, random_state=None, shuffle=False)
 
 for train_index, test_index in sss.split(X, y):
@@ -106,62 +109,23 @@ original_ytest = original_ytest.values
 log_reg_params = {'penalty': [None, 'l2'], 'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000]}
 rand_log_reg = RandomizedSearchCV(LogisticRegression(), log_reg_params, n_iter=4)
 
-# Implementing SMOTE Technique
-sss = StratifiedKFold(n_splits=5, random_state=None, shuffle=False)
+# Implementing SMOTE Technique in the Logistical Regression method.
 for train, test in sss.split(original_Xtrain, original_ytrain):
     # SMOTE happens during Cross Validation not before, to avoid data leakage
     pipeline = imbalanced_make_pipeline(SMOTE(sampling_strategy='minority'),
                                         rand_log_reg)
     model = pipeline.fit(original_Xtrain[train], original_ytrain[train])
     best_est = rand_log_reg.best_estimator_
-    prediction = best_est.predict(original_Xtrain[test])
 
 log_reg_preds = best_est.predict(original_Xtest)
 
 # SMOTE Technique (OverSampling) After splitting and Cross Validating
 sm = SMOTE(sampling_strategy='minority', random_state=42)
 
-# This will be the data we will fit to train the neural network model
+# This will be the data we will fit to check oversample results
 Xsm_train, ysm_train = sm.fit_resample(original_Xtrain, original_ytrain)
 
-
-# Defining a function to plot a confusion matrix
-def plot_confusion_matrix(cm, classes,
-                          normalize=False,
-                          title='Confusion matrix',
-                          cmap=plt.cm.Blues):
-    """
-    This function prints and plots the confusion matrix.
-    Normalization can be applied by setting `normalize=True`.
-    """
-    if normalize:
-        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-        print("Normalized confusion matrix")
-    else:
-        print('Confusion matrix, without normalization')
-
-    print(cm)
-
-    plt.imshow(cm, interpolation='nearest', cmap=cmap)
-    plt.title(title, fontsize=14)
-    plt.colorbar()
-    tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, classes, rotation=45)
-    plt.yticks(tick_marks, classes)
-
-    fmt = '.2f' if normalize else 'd'
-    thresh = cm.max() / 2.
-    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        plt.text(j, i, format(cm[i, j], fmt),
-                 horizontalalignment="center",
-                 color="white" if cm[i, j] > thresh else "black")
-
-    plt.tight_layout()
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
-
-
-# Deep learning with a single neural
+# Deep learning model to ovesample and subsample dfs
 n_inputs = Xsm_train.shape[1]
 n_sub_inputs = X_train.shape[1]
 
@@ -193,7 +157,7 @@ sub_preds = sub_model.predict(original_Xtest, batch_size=200, verbose=0)
 sub_fraud_preds = np.argmax(sub_preds, axis=1)
 
 # Input the confusions matrix with the results of classes predicts
-oversample_smote = confusion_matrix(original_ytest, oversample_fraud_predictions)
+oversample_cm = confusion_matrix(original_ytest, oversample_fraud_predictions)
 sub_cm = confusion_matrix(original_ytest, sub_fraud_preds)
 
 # Input the confusions matrix with the results of the Logistical Regression predicts
@@ -202,22 +166,29 @@ log_reg_cm = confusion_matrix(original_ytest, log_reg_preds)
 # Create an 100% accuracy confusion matrix to compare
 correct_cm = confusion_matrix(original_ytest, original_ytest)
 
-# Plot the confusion matrix with the defined function plot_confusion_matrix
+# Plot all the confusion matrix
 labels = ['No Fraud', 'Fraud']
-a = plt.figure(figsize=(12, 8))
+fig, (a1, a2, a3, a4) = plt.subplots(1, 4, figsize=(8, 12))
 
-a.add_subplot(221)
-plot_confusion_matrix(oversample_smote, labels, title='OverSample (SMOTE) Neural Model \n Confusion Matrix',
-                      cmap=plt.cm.Oranges)
+sns.heatmap(oversample_cm, labels=labels, ax=a1, cmap=plt.cm.Oranges)
+a1.set_title('OverSample (SMOTE) Neural Model \n Confusion Matrix', fontsize=12)
+a1.set_xticklabels(['', ''], fontsize=12, rotation=90)
+a1.set_yticklabels(['', ''], fontsize=12, rotation=360)
 
-a.add_subplot(222)
-plot_confusion_matrix(correct_cm, labels, title='Confusion Matrix \n w/ 100% Accuracy', cmap=plt.cm.Greens)
+sns.heatmap(correct_cm, labels=labels, ax=a2, cmap=plt.cm.Greens)
+a2.set_title('Confusion Matrix \n w/ 100% Accuracy', fontsize=12)
+a2.set_xticklabels(['', ''], fontsize=12, rotation=90)
+a2.set_yticklabels(['', ''], fontsize=12, rotation=360)
 
-a.add_subplot(223)
-plot_confusion_matrix(log_reg_cm, labels, title='Logistical Regression \n Confusion Matrix')
+sns.heatmap(log_reg_cm, labels=labels, ax=a3, cmap=plt.cm.Blues)
+a3.set_title('Logistical Regression SMOTE \n Confusion Matrix', fontsize=12)
+a3.set_xticklabels(['', ''], fontsize=12, rotation=90)
+a3.set_yticklabels(['', ''], fontsize=12, rotation=360)
 
-a.add_subplot(224)
-plot_confusion_matrix(sub_cm, labels, title='Subsampled Neural Model \n Confusion Matrix', cmap=plt.cm.Oranges)
+sns.heatmap(sub_cm, labels=labels, ax=a4, cmap=plt.cm.copper)
+a4.set_title('Subsampled Neural Model \n Confusion Matrix', fontsize=12)
+a4.set_xticklabels(['', ''], fontsize=12, rotation=90)
+a4.set_yticklabels(['', ''], fontsize=12, rotation=360)
 
 plt.show()
 
@@ -255,42 +226,33 @@ y_test_oficial = df_test['TX_FRAUD']
 # Make predictions in the x test with the model and turn into classes predictions with np
 oversample_predictions = oversample_model.predict(X_test_oficial, batch_size=200, verbose=0)
 oversample_fraud_predictions = np.argmax(oversample_predictions, axis=1)
-sub_preds = sub_model.predict(X_test_oficial, batch_size=200, verbose=0)
-sub_fraud_preds = np.argmax(sub_preds, axis=1)
 
 # Input the confusions matrix with the results of classes predicts
 oversample_smote = confusion_matrix(y_test_oficial, oversample_fraud_predictions)
-sub_cm = confusion_matrix(y_test_oficial, sub_fraud_preds)
 
 # Create an 100% accuracy confusion matrix to compare
 correct_cm = confusion_matrix(y_test_oficial, y_test_oficial)
 
-# Plot the confusion matrix with the defined function plot_confusion_matrix
-labels = ['No Fraud', 'Fraud']
-a = plt.figure(figsize=(12, 8))
+# Plot the confusion matrix of the test dataset
+y, (a1, a2) = plt.subplots(1, 2, figsize=(12, 8))
 
-a.add_subplot(221)
-plot_confusion_matrix(oversample_smote, labels, title='OverSample (SMOTE) Neural Model \n Confusion Matrix',
-                      cmap=plt.cm.Oranges)
+sns.heatmap(oversample_smote, labels=labels, ax=a1, cmap=plt.cm.Oranges)
+a1.set_title('OverSample (SMOTE) Neural Model \n Confusion Matrix', fontsize=12)
+a1.set_xticklabels(['', ''], fontsize=12, rotation=90)
+a1.set_yticklabels(['', ''], fontsize=12, rotation=360)
 
-a.add_subplot(222)
-plot_confusion_matrix(correct_cm, labels, title='Confusion Matrix \n w/ 100% Accuracy', cmap=plt.cm.Greens)
-
-a.add_subplot(223)
-plot_confusion_matrix(sub_cm, labels, title='Subsampled Neural Model \n Confusion Matrix', cmap=plt.cm.Oranges)
+sns.heatmap(correct_cm, labels=labels, ax=a2, cmap=plt.cm.Greens)
+a2.set_title('Confusion Matrix \n w/ 100% Accuracy', fontsize=12)
+a2.set_xticklabels(['', ''], fontsize=12, rotation=90)
+a2.set_yticklabels(['', ''], fontsize=12, rotation=360)
 
 plt.show()
 
 # Calculate F1 Score and ROC_AUC for preds
 score_f1 = f1_score(y_test_oficial, oversample_fraud_predictions)
 score_roc = roc_auc_score(y_test_oficial, oversample_fraud_predictions)
-sub_f1 = f1_score(y_test_oficial, sub_fraud_preds)
-sub_roc = roc_auc_score(y_test_oficial, sub_fraud_preds)
 
 
 print('---' * 45)
 print('F1 Score in neural network SMOTE:', round(score_f1 * 100, 2))
 print('ROC Score in neural network SMOTE:', round(score_roc * 100, 2))
-print('---' * 45)
-print('F1 Score in Neural Network Subsample:', round(sub_f1 * 100, 2))
-print('ROC Score in Neural Network Subsample:', round(sub_roc * 100, 2))
