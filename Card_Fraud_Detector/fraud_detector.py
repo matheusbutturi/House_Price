@@ -74,12 +74,15 @@ sub_df_corr = df_new.corr()
 df_corr = df.corr()
 
 # Plotting the correlation matrix
-f, (ax, ax1) = plt.subplots(1, 2, figsize=(20, 20))
+f, ax = plt.subplots(1, 1, figsize=(20, 20))
 sns.heatmap(sub_df_corr,
             cmap='coolwarm',
             ax=ax)
 ax.set_title('Correlation Matrix \n Subsampled data', fontsize=12)
 
+plt.show()
+
+f, ax1 = plt.subplots(1, 1, figsize=(20, 20))
 sns.heatmap(df_corr,
             cmap='coolwarm',
             ax=ax1)
@@ -88,7 +91,7 @@ ax1.set_title('Correlation Matrix \n Full data', fontsize=12)
 plt.show()
 
 # Looking through the matrix we see that TX_DURING_WEEK has a negative correlation with TX_FRAUD
-# And TERMINAL_ID_7_DAY_RISK_WINDOW has a slightly positive correlation with TX_FRAUD
+# And TERMINAL_ID_RISK_7DAY_WINDOW has a slightly positive correlation with TX_FRAUD
 
 # Now split into feature and target the full dataset
 X = df.drop('TX_FRAUD', axis=1)
