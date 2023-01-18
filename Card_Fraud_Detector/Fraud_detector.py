@@ -61,6 +61,7 @@ df_new = equal_amount_of_frauds_df.sample(frac=1, random_state=42)
 X_sub = df_new.drop('TX_FRAUD', axis=1)
 y_sub = df_new['TX_FRAUD']
 
+# Train Test Split
 X_train, X_test, y_train, y_test = train_test_split(X_sub, y_sub, train_size=0.8)
 
 X_train = X_train.values
@@ -86,8 +87,8 @@ ax1.set_title('Correlation Matrix \n Full data', fontsize=12)
 
 plt.show()
 
-# Looking through the matrix we see that TX_DURING_WEEK has a negative correlation with TX_FRAUD and
-# AMOUNT SCALED has a slightly positive correlation with TX_FRAUD
+# Looking through the matrix we see that TX_DURING_WEEK has a negative correlation with TX_FRAUD
+# And TERMINAL_ID_7_DAY_RISK_WINDOW has a slightly positive correlation with TX_FRAUD
 
 # Now split into feature and target the full dataset
 X = df.drop('TX_FRAUD', axis=1)
@@ -166,29 +167,58 @@ log_reg_cm = confusion_matrix(original_ytest, log_reg_preds)
 # Create an 100% accuracy confusion matrix to compare
 correct_cm = confusion_matrix(original_ytest, original_ytest)
 
+# Defining a function to plot a confusion matrix
+import itertools
+def plot_confusion_matrix(cm, classes,
+                          normalize=False,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    print(cm)
+
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title, fontsize=14)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, format(cm[i, j], fmt),
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+
 # Plot all the confusion matrix
 labels = ['No Fraud', 'Fraud']
-fig, (a1, a2, a3, a4) = plt.subplots(1, 4, figsize=(8, 12))
+a = plt.figure(figsize=(8,8))
 
-sns.heatmap(oversample_cm, labels=labels, ax=a1, cmap=plt.cm.Oranges)
-a1.set_title('OverSample (SMOTE) Neural Model \n Confusion Matrix', fontsize=12)
-a1.set_xticklabels(['', ''], fontsize=12, rotation=90)
-a1.set_yticklabels(['', ''], fontsize=12, rotation=360)
+a.add_subplot(221)
+plot_confusion_matrix(oversample_smote, labels, title='OverSample (SMOTE) Neural Model \n Confusion Matrix',
+                      cmap=plt.cm.Oranges)
 
-sns.heatmap(correct_cm, labels=labels, ax=a2, cmap=plt.cm.Greens)
-a2.set_title('Confusion Matrix \n w/ 100% Accuracy', fontsize=12)
-a2.set_xticklabels(['', ''], fontsize=12, rotation=90)
-a2.set_yticklabels(['', ''], fontsize=12, rotation=360)
+a.add_subplot(222)
+plot_confusion_matrix(correct_cm, labels, title='Confusion Matrix \n w/ 100% Accuracy', cmap=plt.cm.Greens)
 
-sns.heatmap(log_reg_cm, labels=labels, ax=a3, cmap=plt.cm.Blues)
-a3.set_title('Logistical Regression SMOTE \n Confusion Matrix', fontsize=12)
-a3.set_xticklabels(['', ''], fontsize=12, rotation=90)
-a3.set_yticklabels(['', ''], fontsize=12, rotation=360)
+a.add_subplot(223)
+plot_confusion_matrix(log_reg_cm, labels, title='Logistical Regression \n Confusion Matrix', cmap=plt.cm.Blues)
 
-sns.heatmap(sub_cm, labels=labels, ax=a4, cmap=plt.cm.copper)
-a4.set_title('Subsampled Neural Model \n Confusion Matrix', fontsize=12)
-a4.set_xticklabels(['', ''], fontsize=12, rotation=90)
-a4.set_yticklabels(['', ''], fontsize=12, rotation=360)
+a.add_subplot(224)
+plot_confusion_matrix(sub_cm, labels, title='Subsampled Neural Model \n Confusion Matrix', cmap=plt.cm.copper)
 
 plt.show()
 
@@ -202,7 +232,6 @@ log_reg_roc = roc_auc_score(original_ytest, log_reg_preds)
 sub_f1 = f1_score(original_ytest, sub_fraud_preds)
 sub_roc = roc_auc_score(original_ytest, sub_fraud_preds)
 
-
 print('---' * 45)
 print('F1 Score in neural network SMOTE:', round(score_f1 * 100, 2))
 print('ROC Score in neural network SMOTE:', round(score_roc * 100, 2))
@@ -213,13 +242,13 @@ print('---' * 45)
 print('F1 Score in Neural Network Subsample:', round(sub_f1 * 100, 2))
 print('ROC Score in Neural Network Subsample:', round(sub_roc * 100, 2))
 
-
 # Testing the best model into a new data
 df_test_full = pd.concat((pd.read_pickle(files) for files in pkl_test_files))
 df_test = df_test_full[input_features].copy()
 df_test['AMOUNT_SCALED'] = scaler.fit_transform(df_test['TX_AMOUNT'].values.reshape(-1, 1))
 df_test.drop('TX_AMOUNT', axis=1, inplace=True)
 
+# Split the test dataset
 X_test_oficial = df_test.drop('TX_FRAUD', axis=1)
 y_test_oficial = df_test['TX_FRAUD']
 
@@ -234,17 +263,13 @@ oversample_smote = confusion_matrix(y_test_oficial, oversample_fraud_predictions
 correct_cm = confusion_matrix(y_test_oficial, y_test_oficial)
 
 # Plot the confusion matrix of the test dataset
-y, (a1, a2) = plt.subplots(1, 2, figsize=(12, 8))
+a = plt.figure(figsize=(8,8))
+a.add_subplot(221)
+plot_confusion_matrix(oversample_smote, labels, title='OverSample (SMOTE) Neural Model \n Confusion Matrix',
+                      cmap=plt.cm.Oranges)
 
-sns.heatmap(oversample_smote, labels=labels, ax=a1, cmap=plt.cm.Oranges)
-a1.set_title('OverSample (SMOTE) Neural Model \n Confusion Matrix', fontsize=12)
-a1.set_xticklabels(['', ''], fontsize=12, rotation=90)
-a1.set_yticklabels(['', ''], fontsize=12, rotation=360)
-
-sns.heatmap(correct_cm, labels=labels, ax=a2, cmap=plt.cm.Greens)
-a2.set_title('Confusion Matrix \n w/ 100% Accuracy', fontsize=12)
-a2.set_xticklabels(['', ''], fontsize=12, rotation=90)
-a2.set_yticklabels(['', ''], fontsize=12, rotation=360)
+a.add_subplot(222)
+plot_confusion_matrix(correct_cm, labels, title='Confusion Matrix \n w/ 100% Accuracy', cmap=plt.cm.Greens)
 
 plt.show()
 
