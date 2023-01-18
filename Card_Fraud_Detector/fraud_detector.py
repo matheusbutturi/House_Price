@@ -221,7 +221,7 @@ a.add_subplot(223)
 plot_confusion_matrix(log_reg_cm, labels, title='Logistical Regression \n Confusion Matrix', cmap=plt.cm.Blues)
 
 a.add_subplot(224)
-plot_confusion_matrix(sub_cm, labels, title='Subsampled Neural Model \n Confusion Matrix', cmap=plt.cm.copper)
+plot_confusion_matrix(sub_cm, labels, title='Subsampled Neural Model \n Confusion Matrix', cmap=plt.cm.Oranges)
 
 plt.show()
 
