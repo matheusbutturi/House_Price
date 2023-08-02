@@ -61,7 +61,7 @@ df_new = equal_amount_of_frauds_df.sample(frac=1, random_state=42)
 X_sub = df_new.drop('TX_FRAUD', axis=1)
 y_sub = df_new['TX_FRAUD']
 
-# Train Test Split
+# Train Test Split of the subsampled data
 X_train, X_test, y_train, y_test = train_test_split(X_sub, y_sub, train_size=0.8)
 
 X_train = X_train.values
