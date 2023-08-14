@@ -106,7 +106,7 @@ original_ytest = original_ytest.values
 log_reg_params = {'penalty': [None, 'l2'], 'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000]}
 rand_log_reg = RandomizedSearchCV(LogisticRegression(), log_reg_params, n_iter=4)
 
-# Implementing SMOTE Technique in the Logistical Regression method.
+# Implementing SMOTE Technique in the Logistical Regression method, during cross-validation.
 for train, test in sss.split(original_Xtrain, original_ytrain):
     # SMOTE happens during Cross Validation, not before, to avoid data leakage
     pipeline = imbalanced_make_pipeline(SMOTE(sampling_strategy='minority'),
@@ -114,6 +114,7 @@ for train, test in sss.split(original_Xtrain, original_ytrain):
     model = pipeline.fit(original_Xtrain[train], original_ytrain[train])
     best_est = rand_log_reg.best_estimator_
 
+# Get logistic regression predicts
 log_reg_preds = best_est.predict(original_Xtest)
 
 # Now to train a deep learning model, i implemented the SMOTE technique before cross-validation
