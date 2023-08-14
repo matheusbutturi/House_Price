@@ -60,8 +60,8 @@ equal_amount_of_frauds_df = pd.concat([df_fraud, df_nonfraud])
 df_sub = equal_amount_of_frauds_df.sample(frac=1, random_state=42)
 
 # Separate target and feature of the subsampled data
-X_sub = df_new.drop('TX_FRAUD', axis=1)
-y_sub = df_new['TX_FRAUD']
+X_sub = df_sub.drop('TX_FRAUD', axis=1)
+y_sub = df_sub['TX_FRAUD']
 
 # Train Test Split of the subsampled data
 X_train, X_test, y_train, y_test = train_test_split(X_sub, y_sub, train_size=0.8)
