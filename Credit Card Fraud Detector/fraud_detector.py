@@ -17,11 +17,13 @@ import glob
 import warnings
 warnings.filterwarnings('ignore')
 
+# Reading all the files
 path = 'D:/DataScience/credit_card_fraud/dataset_transacoes_bancarias/'
 pkl_train_files = glob.glob(path + 'Treino/*.pkl')
 pkl_test_files = glob.glob(path + 'Teste/*.pkl')
 df_list = (pd.read_pickle(file) for file in pkl_train_files)
 
+# Joining all the files togheter
 df_train_full = pd.concat(df_list)
 
 # Searching for missing values and imbalanced dataset
@@ -49,13 +51,13 @@ df['AMOUNT_SCALED'] = scaler.fit_transform(df['TX_AMOUNT'].values.reshape(-1, 1)
 df.drop('TX_AMOUNT', axis=1, inplace=True)
 
 # Undersampling data
-df_new = df.sample(frac=1)
-df_fraud = df_new.loc[df_new['TX_FRAUD'] == 1]
-df_nonfraud = df_new.loc[df_new['TX_FRAUD'] == 0][:(df_new['TX_FRAUD'].value_counts()[1])]
+df_sub = df.sample(frac=1)
+df_fraud = df_sub.loc[df_sub['TX_FRAUD'] == 1]
+df_nonfraud = df_sub.loc[df_sub['TX_FRAUD'] == 0][:(df_sub['TX_FRAUD'].value_counts()[1])]
 equal_amount_of_frauds_df = pd.concat([df_fraud, df_nonfraud])
 
 # Shuffling the dataset subsampled
-df_new = equal_amount_of_frauds_df.sample(frac=1, random_state=42)
+df_sub = equal_amount_of_frauds_df.sample(frac=1, random_state=42)
 
 # Separate target and feature of the subsampled data
 X_sub = df_new.drop('TX_FRAUD', axis=1)
@@ -69,9 +71,8 @@ X_test = X_test.values
 y_train = y_train.values
 y_test = y_test.values
 
-# Checking correlations in the full dataset and the subsampled
-sub_df_corr = df_new.corr()
-df_corr = df.corr()
+# Checking correlations in the subsampled data
+sub_df_corr = df_sub.corr()
 
 # Plotting the correlation matrix
 f, ax = plt.subplots(1, 1, figsize=(20, 20))
@@ -79,14 +80,6 @@ sns.heatmap(sub_df_corr,
             cmap='coolwarm',
             ax=ax)
 ax.set_title('Correlation Matrix \n Subsampled data', fontsize=12)
-
-plt.show()
-
-f, ax1 = plt.subplots(1, 1, figsize=(20, 20))
-sns.heatmap(df_corr,
-            cmap='coolwarm',
-            ax=ax1)
-ax1.set_title('Correlation Matrix \n Full data', fontsize=12)
 
 plt.show()
 
@@ -109,13 +102,13 @@ original_Xtest = original_Xtest.values
 original_ytrain = original_ytrain.values
 original_ytest = original_ytest.values
 
-# Classifier with optimal parameter and RandomSearchCV
+# Define a grid search with RandomSearchCV to LogisticRegression
 log_reg_params = {'penalty': [None, 'l2'], 'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000]}
 rand_log_reg = RandomizedSearchCV(LogisticRegression(), log_reg_params, n_iter=4)
 
 # Implementing SMOTE Technique in the Logistical Regression method.
 for train, test in sss.split(original_Xtrain, original_ytrain):
-    # SMOTE happens during Cross Validation not before, to avoid data leakage
+    # SMOTE happens during Cross Validation, not before, to avoid data leakage
     pipeline = imbalanced_make_pipeline(SMOTE(sampling_strategy='minority'),
                                         rand_log_reg)
     model = pipeline.fit(original_Xtrain[train], original_ytrain[train])
@@ -123,10 +116,10 @@ for train, test in sss.split(original_Xtrain, original_ytrain):
 
 log_reg_preds = best_est.predict(original_Xtest)
 
-# SMOTE Technique (OverSampling) After splitting and Cross Validating
+# Now to train a deep learning model, i implemented the SMOTE technique before cross-validation
 sm = SMOTE(sampling_strategy='minority', random_state=42)
 
-# This will be the data we will fit to check oversample results
+# This will be the data we will fit to check oversample results in the deep learning model
 Xsm_train, ysm_train = sm.fit_resample(original_Xtrain, original_ytrain)
 
 # Deep learning model to ovesample and subsample dfs
